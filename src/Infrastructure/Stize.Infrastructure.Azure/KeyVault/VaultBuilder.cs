@@ -69,6 +69,8 @@ namespace Stize.Infrastructure.Azure.KeyVault
 
         public override Vault Build(CustomResourceOptions cro)
         {
+            Arguments.VaultName = ResourceStrategy.Naming.GenerateName(Arguments.VaultName);
+            ResourceStrategy.Tagging.AddTags(Arguments.Tags);
             Properties.NetworkAcls = NetworkRuleSet;
             Arguments.Properties = Properties;
             var vault = new Vault(Name, Arguments, cro);

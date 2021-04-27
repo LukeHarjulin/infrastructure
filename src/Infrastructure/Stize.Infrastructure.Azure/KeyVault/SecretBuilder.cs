@@ -56,6 +56,8 @@ namespace Stize.Infrastructure.Azure.KeyVault
         {
             Properties.Attributes = SecretAttributes;
             Arguments.Properties = Properties;
+            Arguments.SecretName = ResourceStrategy.Naming.GenerateName(Arguments.SecretName);
+            ResourceStrategy.Tagging.AddTags(Arguments.Tags);
             var secret = new Secret(Name, Arguments, cro);
             return secret;
         }
