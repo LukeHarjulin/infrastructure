@@ -34,6 +34,8 @@ namespace Stize.Infrastructure.Azure.Networking
         /// <returns></returns>
         public override NetworkSecurityGroup Build(CustomResourceOptions cro)
         {
+            Arguments.NetworkSecurityGroupName = ResourceStrategy.Naming.GenerateName(Arguments.NetworkSecurityGroupName);
+            ResourceStrategy.Tagging.AddTags(Arguments.Tags);
             var nsg = new NetworkSecurityGroup(Name, Arguments, cro);
             return nsg;
         }

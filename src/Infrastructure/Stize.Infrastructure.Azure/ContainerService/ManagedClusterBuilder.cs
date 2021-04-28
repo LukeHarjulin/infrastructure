@@ -56,6 +56,8 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <returns></returns>
         public override ManagedCluster Build(CustomResourceOptions cro)
         {
+            Arguments.ResourceName = ResourceStrategy.Naming.GenerateName(Arguments.ResourceName);
+            ResourceStrategy.Tagging.AddTags(Arguments.Tags);
             var cluster = new ManagedCluster(Name, Arguments, cro);
             return cluster;
         }

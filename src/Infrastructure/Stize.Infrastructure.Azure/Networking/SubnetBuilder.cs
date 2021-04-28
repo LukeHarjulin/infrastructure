@@ -39,6 +39,7 @@ namespace Stize.Infrastructure.Azure.Networking
         /// <returns></returns>
         public override Subnet Build(CustomResourceOptions cro)
         {
+            Arguments.SubnetName = ResourceStrategy.Naming.GenerateName(Arguments.SubnetName);
             var subnet = new Subnet(Name, Arguments, cro);
             return subnet;
         }       

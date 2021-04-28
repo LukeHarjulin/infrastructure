@@ -34,6 +34,8 @@ namespace Stize.Infrastructure.Azure.Networking
         /// <returns>ASG</returns>
         public override ApplicationSecurityGroup Build(CustomResourceOptions cro)
         {
+            Arguments.ApplicationSecurityGroupName = ResourceStrategy.Naming.GenerateName(Arguments.ApplicationSecurityGroupName);
+            ResourceStrategy.Tagging.AddTags(Arguments.Tags);
             var asg = new ApplicationSecurityGroup(Name, Arguments, cro);
             return asg;
         }

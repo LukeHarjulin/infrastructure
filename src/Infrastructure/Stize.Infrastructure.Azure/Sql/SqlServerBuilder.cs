@@ -62,6 +62,8 @@ namespace Stize.Infrastructure.Azure.Sql
         /// <returns></returns>
         public override Server Build(CustomResourceOptions cro)
         {
+            Arguments.ServerName = ResourceStrategy.Naming.GenerateName(Arguments.ServerName);
+            ResourceStrategy.Tagging.AddTags(Arguments.Tags);
             var sql = new Server(Name, Arguments, cro);            
             return sql;
         }
