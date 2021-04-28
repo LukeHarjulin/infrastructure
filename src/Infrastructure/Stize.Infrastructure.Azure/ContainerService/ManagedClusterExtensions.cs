@@ -1,6 +1,8 @@
 using System;
+using Pulumi;
 using Pulumi.AzureAD;
 using Pulumi.AzureNative.ContainerService.Inputs;
+using Pulumi.AzureNative.ContainerService;
 using Pulumi.Random;
 using Pulumi.Tls;
 
@@ -8,6 +10,59 @@ namespace Stize.Infrastructure.Azure.ContainerService
 {
     public static class ManagedClusterExtensions
     {
+
+        public static ManagedClusterBuilder Name(this ManagedClusterBuilder builder, Input<string> clusterName)
+        {
+            builder.Arguments.ResourceName = clusterName;
+            return builder;
+        }
+
+        public static ManagedClusterBuilder Location(this ManagedClusterBuilder builder, Input<string> location)
+        {
+            builder.Arguments.Location = location;
+            return builder;
+        }
+
+        public static ManagedClusterBuilder ResourceGroup(this ManagedClusterBuilder builder, Input<string> resourceGroupName)
+        {
+            builder.Arguments.ResourceGroupName = resourceGroupName;
+            return builder;
+        }
+
+        public static ManagedClusterBuilder DnsPrefix(this ManagedClusterBuilder builder, Input<string> dnsPrefix)
+        {
+            builder.Arguments.DnsPrefix = dnsPrefix;
+            return builder;
+        }
+        public static ManagedClusterBuilder KubernetesVersion(this ManagedClusterBuilder builder, Input<string> version)
+        {
+            builder.Arguments.KubernetesVersion = version;
+            return builder;
+        }
+
+        public static ManagedClusterBuilder ClusterSku(this ManagedClusterBuilder builder, InputUnion<string, ManagedClusterSKUName> skuName, InputUnion<string, ManagedClusterSKUTier> skuTier)
+        {
+            builder.Arguments.Sku = new ManagedClusterSKUArgs { Name = skuName, Tier = skuTier };
+            return builder;
+        }
+
+        public static ManagedClusterBuilder WithExistingServicePrinciple(this ManagedClusterBuilder builder, Input<string> clientID, Input<string> secret)
+        {
+            builder.Arguments.ServicePrincipalProfile = new ManagedClusterServicePrincipalProfileArgs { ClientId = clientID, Secret = secret};
+            return builder;
+        }
+
+        public static ManagedClusterBuilder WithDefaultAgentPool(this ManagedClusterBuilder builder, Input<string> clientID, Input<string> secret)
+        {
+            builder.Arguments.AgentPoolProfiles = new InputList<ManagedClusterAgentPoolProfileArgs> 
+            { 
+                new ManagedClusterAgentPoolProfileArgs { 
+                    Name = "agentpool",
+                }
+            };
+            return builder;
+        }
+
         public static ManagedClusterBuilder WithNewAppAndServicePrincipal(this ManagedClusterBuilder builder)
         {
             var adApp = new Application($"{builder.Arguments.ResourceName}-app");
