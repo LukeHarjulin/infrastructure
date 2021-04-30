@@ -1,6 +1,7 @@
 using System;
 using Pulumi;
 using Pulumi.AzureNative.ContainerService;
+using Pulumi.AzureNative.ContainerService.Inputs;
 using Pulumi.Random;
 using Stize.Infrastructure.Strategies;
 
@@ -8,8 +9,28 @@ namespace Stize.Infrastructure.Azure.ContainerService
 {
     public class ManagedClusterBuilder : BaseBuilder<ManagedCluster>
     {
+        /// <summary>
+        /// 
+        /// </summary>
+        public ManagedClusterArgs Arguments { get; private set; } = new ManagedClusterArgs()
+        {
+            AgentPoolProfiles = new InputList<ManagedClusterAgentPoolProfileArgs>(),
+            KubernetesVersion = "1.19.9"
+        };
 
-        public ManagedClusterArgs Arguments { get; private set; } = new ManagedClusterArgs();
+        /// <summary>
+        /// 
+        /// </summary>
+        public ManagedClusterAgentPoolProfileArgs PrimaryAgentPool = new ManagedClusterAgentPoolProfileArgs();
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public ContainerServiceNetworkProfileArgs NetworkProfile = new ContainerServiceNetworkProfileArgs() 
+        {
+            NetworkPlugin = NetworkPlugin.Kubenet,
+            
+        };
 
         /// <summary>
         /// Creates a new instance of <see="ManagedClusterBuilder" />
@@ -58,6 +79,8 @@ namespace Stize.Infrastructure.Azure.ContainerService
         {
             Arguments.ResourceName = ResourceStrategy.Naming.GenerateName(Arguments.ResourceName);
             ResourceStrategy.Tagging.AddTags(Arguments.Tags);
+            Arguments.AgentPoolProfiles.Add(PrimaryAgentPool);
+            Arguments.NetworkProfile = NetworkProfile;
             var cluster = new ManagedCluster(Name, Arguments, cro);
             return cluster;
         }
