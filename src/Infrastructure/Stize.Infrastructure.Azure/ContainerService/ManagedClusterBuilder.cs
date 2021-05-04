@@ -32,6 +32,8 @@ namespace Stize.Infrastructure.Azure.ContainerService
             
         };
 
+        public ManagedClusterAADProfileArgs AadProfile = new ManagedClusterAADProfileArgs();
+
         /// <summary>
         /// Creates a new instance of <see="ManagedClusterBuilder" />
         /// </summary>
@@ -81,6 +83,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
             ResourceStrategy.Tagging.AddTags(Arguments.Tags);
             Arguments.AgentPoolProfiles.Add(PrimaryAgentPool);
             Arguments.NetworkProfile = NetworkProfile;
+            Arguments.AadProfile = AadProfile;
             var cluster = new ManagedCluster(Name, Arguments, cro);
             return cluster;
         }

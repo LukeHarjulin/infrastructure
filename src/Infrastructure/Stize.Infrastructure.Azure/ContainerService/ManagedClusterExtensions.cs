@@ -196,20 +196,53 @@ namespace Stize.Infrastructure.Azure.ContainerService
         }
 
         /// <summary>
-        /// Configure Kubernetes role-based access control (RBAC) using Azure Active Directory group membership. 
+        /// Enables Kubernetes role-based access control which provides fine-grained control over cluster resources.
+        /// Enables AKS-managed Azure AD.
         /// This can be used to control access to specific namespaces inside your Kubernetes cluster based on a user's membership in specified Azure Active Directory groups.
         /// </summary>
         /// <param name="builder"></param>
-        /// <param name="adminGroupObjectIDs"></param>
+        /// <param name="tenantId">The Tenant ID used for Azure Active Directory Application.</param>
+        /// <param name="adminGroupObjectIDs">A comma-seperated list of Object IDs of Azure Active Directory Groups which should have Admin Role on the Cluster.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder EnableAKSManagedAAD(this ManagedClusterBuilder builder, Input<string> tenantId, params Input<string>[] adminGroupObjectIDs)
+        public static ManagedClusterBuilder EnableAKSManagedAzureAD(this ManagedClusterBuilder builder, Input<string> tenantId, params Input<string>[] adminGroupObjectIDs)
         {
-            builder.Arguments.EnableRBAC = true; // THIS WHOLE AKS AAD STUFF NEEDS RE-DOING AND TESTING - CURRENTLY UNUSABLE
-            builder.Arguments.AadProfile = new ManagedClusterAADProfileArgs 
-            { 
-                TenantID = tenantId, 
-                AdminGroupObjectIDs = adminGroupObjectIDs,  
-            };
+            builder.Arguments.EnableRBAC = true;
+            builder.AadProfile.Managed = true;
+            builder.AadProfile.AdminGroupObjectIDs = adminGroupObjectIDs;
+            builder.AadProfile.TenantID = tenantId;
+            return builder;
+        }
+
+        /// <summary>
+        /// Enable AKS to use Azure AD for user authentication.
+        /// Azure Kubernetes Service Managed Azure AD must be enabled for this cluster to use AKS for Azure AD authentication.
+        /// Azure AD based RBAC is in Public Preview - more information and details on how to opt into the Preview can be found in <see href="https://docs.microsoft.com/en-us/azure/aks/manage-azure-rbac">this article.</see>
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder EnableAzureADForAuth(this ManagedClusterBuilder builder)
+        {
+            builder.AadProfile.EnableAzureRBAC = true;
+            return builder;
+        }
+
+        /// <summary>
+        /// Enables Kubernetes role-based access control which provides fine-grained control over cluster resources.
+        /// Specify the resource ID for client application used for user login via kubectl, and the server application, the managed cluster's API server application.
+        /// The secret for the API server must also be specified.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="clientAppId">The ID of an Azure Active Directory client application of type "Native". This application is for user login via kubectl.</param>
+        /// <param name="serverAppId">The ID of an Azure Active Directory server application of type "Web app/API". This application represents the managed cluster's apiserver (Server application).</param>
+        /// <param name="serverAppSecret">The secret of an Azure Active Directory server application.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder WithAzureADClientServerApp(this ManagedClusterBuilder builder, Input<string> clientAppId, Input<string> serverAppId, Input<string> serverAppSecret)
+        {
+            builder.Arguments.EnableRBAC = true;
+            builder.AadProfile.Managed = false;
+            builder.AadProfile.ClientAppID = clientAppId;
+            builder.AadProfile.ServerAppID = serverAppId;
+            builder.AadProfile.ServerAppSecret = serverAppSecret;
             return builder;
         }
 
