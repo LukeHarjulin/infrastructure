@@ -15,7 +15,8 @@ namespace Stize.Infrastructure.Azure.ContainerService
         public ManagedClusterArgs Arguments { get; private set; } = new ManagedClusterArgs()
         {
             AgentPoolProfiles = new InputList<ManagedClusterAgentPoolProfileArgs>(),
-            KubernetesVersion = "1.19.9"
+            KubernetesVersion = "1.19.9",
+            EnableRBAC = true
         };
 
         /// <summary>
@@ -31,6 +32,10 @@ namespace Stize.Infrastructure.Azure.ContainerService
             NetworkPlugin = NetworkPlugin.Kubenet,
             
         };
+
+        public ManagedClusterAPIServerAccessProfileArgs SecurityProfileArgs = new ManagedClusterAPIServerAccessProfileArgs();
+
+        public InputMap<ManagedClusterAddonProfileArgs>AddonProfiles = new InputMap<ManagedClusterAddonProfileArgs>();
 
         public ManagedClusterAADProfileArgs AadProfile = new ManagedClusterAADProfileArgs();
 
@@ -84,6 +89,8 @@ namespace Stize.Infrastructure.Azure.ContainerService
             Arguments.AgentPoolProfiles.Add(PrimaryAgentPool);
             Arguments.NetworkProfile = NetworkProfile;
             Arguments.AadProfile = AadProfile;
+            Arguments.ApiServerAccessProfile = SecurityProfileArgs;
+            Arguments.AddonProfiles = AddonProfiles;
             var cluster = new ManagedCluster(Name, Arguments, cro);
             return cluster;
         }
