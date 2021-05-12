@@ -239,7 +239,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
         }
 
         /// <summary>
-        /// Enables Kubernetes role-based access control which provides fine-grained control over cluster resources.
+        /// Using Kubernetes role-based access control provides fine-grained control over cluster resources.
         /// Specify the resource ID for client application used for user login via kubectl, and the server application, the managed cluster's API server application.
         /// The secret for the API server must also be specified.
         /// </summary>
@@ -296,6 +296,18 @@ namespace Stize.Infrastructure.Azure.ContainerService
         }
 
         /// <summary>
+        /// The outbound (egress) routing method which should be used for this Kubernetes Cluster. Defaults to 'loadbalancer'.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="outboundType">The outbound (egress) routing method which should be used for this Kubernetes Cluster. Defaults to 'loadbalancer'.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder OutboundType(this ManagedClusterBuilder builder, InputUnion<string, OutboundType> outboundType)
+        {
+            builder.NetworkProfile.OutboundType = outboundType;
+            return builder;
+        }
+
+        /// <summary>
         /// Network policies allow you to define rules for ingress and egress traffic between pods in a cluster, 
         /// improving your cluster security by restricting access to certain pods. 
         /// You can choose between Calico Network Policies and Azure Network Policies for your cluster. 
@@ -303,30 +315,114 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// Must use Azure CNI to be able to use the Azure network policy.
         /// </summary>
         /// <param name="builder"></param>
-        /// <param name="networkPolicy"></param>
+        /// <param name="networkPolicy">The Network Policy that defines the rules for ingress and egress traffic between pods in a cluster. Valid values: 'Calico' and 'Azure'.</param>
         /// <returns></returns>
         public static ManagedClusterBuilder NetworkPolicy(this ManagedClusterBuilder builder, InputUnion<string, NetworkPolicy> networkPolicy)
         {
-            builder.NetworkProfile.NetworkPolicy = Pulumi.AzureNative.ContainerService.NetworkPolicy.;
+            builder.NetworkProfile.NetworkPolicy = networkPolicy;
             return builder;
         }
 
-        public static ManagedClusterBuilder NetworkProfile(this ManagedClusterBuilder builder)
+        /// <summary>
+        /// The Load Balancer Sku for the Managed Cluster.
+        /// An Azure Load Balancer routes and balances traffic to your Kubernetes cluster. 
+        /// The 'Standard' SKU, which has expanded capabilities compared to the 'Basic' SKU, is the default SKU.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="sku"></param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder LoadBalancerSku(this ManagedClusterBuilder builder, InputUnion<string, LoadBalancerSku> sku)
+        {
+            builder.NetworkProfile.LoadBalancerSku = sku;
+            return builder;
+        }
+
+        /// <summary>
+        /// Set the number of managed outbound IPs for the cluster Load Balancer. Value must be between 1 and 100 inclusive.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="count">Set the number of managed outbound IPs for the cluster Load Balancer. Value must be between 1 and 100 inclusive.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder LoadBalancerManagedOutboundIpCount(this ManagedClusterBuilder builder, Input<int> count)
+        {
+            builder.LoadBalancerProfile.ManagedOutboundIPs = new ManagedClusterLoadBalancerProfileManagedOutboundIPsArgs
+            {
+                Count = count
+            };
+            return builder;
+        }
+
+        /// <summary>
+        /// The ID of the Public IP Addresses which should be used for outbound communication for the cluster load balancer.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="outboundIpIDs">The ID of the Public IP Addresses which should be used for outbound communication for the cluster load balancer.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder LoadBalancerOutboundIPs(this ManagedClusterBuilder builder, params Input<string>[] outboundIpIDs)
+        {
+            var publicIPs = new InputList<ResourceReferenceArgs>();
+            foreach (var id in outboundIpIDs)
+            {
+                publicIPs.Add(new ResourceReferenceArgs { Id = id });
+            }
+            builder.LoadBalancerProfile.OutboundIPs = new ManagedClusterLoadBalancerProfileOutboundIPsArgs { PublicIPs = publicIPs };
+
+            // NEED TO FIND OUT THE DIFFERENCE BETWEEN 'OutboundIPs' and 'EffectiveOutboundIPs'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            // https://www.pulumi.com/docs/reference/pkg/azure-native/containerservice/managedcluster/#managedclusterloadbalancerprofile
+            return builder;
+        }
+
+        /// <summary>
+        /// The ID of the outbound Public IP Address Prefixes which should be used for the cluster load balancer.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="outboundPrefixIds"></param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder LoadBalancerOutboundPrefixes(this ManagedClusterBuilder builder, params Input<string>[] outboundPrefixIds)
+        {
+            var publicPrefixes = new InputList<ResourceReferenceArgs>();
+            foreach (var id in outboundPrefixIds)
+            {
+                publicPrefixes.Add(new ResourceReferenceArgs { Id = id });
+            }
+            builder.LoadBalancerProfile.OutboundIPPrefixes = new ManagedClusterLoadBalancerProfileOutboundIPPrefixesArgs { PublicIPPrefixes = publicPrefixes };
+            return builder;
+        }
+
+        /// <summary>
+        /// Number of desired SNAT port for each VM in the clusters load balancer. Must be between 0 and 64000 inclusive. Defaults to 0.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="ports">Number of desired SNAT port for each VM in the clusters load balancer. Must be between 0 and 64000 inclusive. Defaults to 0.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder LoadBalancerAllocatedPorts(this ManagedClusterBuilder builder, Input<int> ports)
+        {
+            builder.LoadBalancerProfile.AllocatedOutboundPorts = ports;
+            return builder;
+        }
+
+        /// <summary>
+        /// Desired outbound flow idle timeout in minutes for the cluster load balancer. Must be between 4 and 120 inclusive. Defaults to 30.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="minutes">Desired outbound flow idle timeout in minutes for the cluster load balancer. Must be between 4 and 120 inclusive. Defaults to 30.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder LoadBalancerIdleTimeout(this ManagedClusterBuilder builder, Input<int> minutes)
+        {
+            builder.LoadBalancerProfile.IdleTimeoutInMinutes = minutes;
+            return builder;
+        }
+
+
+        public static ManagedClusterBuilder LoadBalancerProfile(this ManagedClusterBuilder builder)
         {
             builder.Arguments.NetworkProfile = new ContainerServiceNetworkProfileArgs
             {
-                LoadBalancerSku = LoadBalancerSku.Standard, //  Specifies the SKU of the Load Balancer used for this Kubernetes Cluster. Possible values are Basic and Standard. Defaults to Standard.
                 LoadBalancerProfile = new ManagedClusterLoadBalancerProfileArgs // A load_balancer_profile block. This can only be specified when load_balancer_sku is set to Standard
                 {
-                    AllocatedOutboundPorts = 0, // Number of desired SNAT port for each VM in the clusters load balancer. Must be between 0 and 64000 inclusive. Defaults to 0.
                     EffectiveOutboundIPs = new InputList<ResourceReferenceArgs>
                     {
                         new ResourceReferenceArgs { Id = "" }
-                    },
-                    IdleTimeoutInMinutes = 0, // Desired outbound flow idle timeout in minutes for the cluster load balancer. Must be between 4 and 120 inclusive. Defaults to 30.
-                    ManagedOutboundIPs = new ManagedClusterLoadBalancerProfileManagedOutboundIPsArgs
-                    {
-                        Count = 0 // Count of desired managed outbound IPs for the cluster load balancer. Must be between 1 and 100 inclusive.
                     },
                     OutboundIPPrefixes = new ManagedClusterLoadBalancerProfileOutboundIPPrefixesArgs
                     {
@@ -344,7 +440,6 @@ namespace Stize.Infrastructure.Azure.ContainerService
                     },
                 },
                 NetworkMode = NetworkMode.Transparent, // Might be useless. Can only be set to 'bridge' for existing clusters and cannot be used to provision new clusters. Can only be set when NetworkPlugin is set to 'azure'.
-                OutboundType = OutboundType.LoadBalancer, // The outbound (egress) routing method which should be used for this Kubernetes Cluster. Defaults to 'loadbalancer'
             };
             return builder;
         }
@@ -359,7 +454,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <returns></returns>
         public static ManagedClusterBuilder EnableVirtualNodes(this ManagedClusterBuilder builder, Input<string> subnetName)
         {
-            builder.AddonProfiles.Add("", new ManagedClusterAddonProfileArgs
+            builder.AddonProfiles.Add("aci_connector_linux", new ManagedClusterAddonProfileArgs
             {
                 Enabled = true,
                 Config = new InputMap<string>
@@ -524,7 +619,8 @@ namespace Stize.Infrastructure.Azure.ContainerService
         }
 
         /// <summary>
-        /// 
+        /// Sets up the profile for the Linux VMs in the Managed Cluster, setting the username as specified (default value is "stize") and 
+        /// generating a new Elliptic Curve private key (default EC is 'P224') for SSH.
         /// </summary>
         /// <param name="builder"></param>
         /// <param name="username"></param>
@@ -596,7 +692,8 @@ namespace Stize.Infrastructure.Azure.ContainerService
         }
 
         /// <summary>
-        /// 
+        /// Sets up the profile for the Linux VMs in the Managed Cluster, setting the username as specified (default value is "stize") and 
+        /// generating a new RSA private key (default RSA bits is 4096) for SSH.
         /// </summary>
         /// <param name="builder"></param>
         /// <param name="rsaBits"></param>
@@ -626,5 +723,23 @@ namespace Stize.Infrastructure.Azure.ContainerService
 
             return builder;
         }
+
+        /// <summary>
+        /// The upgrade channel for this Kubernetes Cluster.
+        /// Valid values: 'Rapid', 'Stable', 'Patch', 'Node_image', and 'None'.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="channel">The upgrade channel for this Kubernetes Cluster. Valid values: 'Rapid', 'Stable', 'Patch', 'Node_image', and 'None'.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder AutoUpgradeChannel(this ManagedClusterBuilder builder, InputUnion<string, UpgradeChannel> channel)
+        {
+            builder.Arguments.AutoUpgradeProfile = new ManagedClusterAutoUpgradeProfileArgs { UpgradeChannel = channel };
+            return builder;
+        }
+
+
+        /// Need to figure out a good way to add AutoScaler properties.
+        /// There's a lot.
+        /// https://www.pulumi.com/docs/reference/pkg/azure-native/containerservice/managedcluster/#managedclusterpropertiesautoscalerprofile
     }
 }
