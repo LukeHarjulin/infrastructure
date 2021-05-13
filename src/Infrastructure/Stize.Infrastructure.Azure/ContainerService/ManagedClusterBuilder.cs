@@ -35,6 +35,8 @@ namespace Stize.Infrastructure.Azure.ContainerService
 
         public ManagedClusterLoadBalancerProfileArgs LoadBalancerProfile = new ManagedClusterLoadBalancerProfileArgs();
 
+        public ManagedClusterPropertiesAutoScalerProfileArgs AutoScalerProfile = new ManagedClusterPropertiesAutoScalerProfileArgs();
+
         public ManagedClusterAPIServerAccessProfileArgs SecurityProfileArgs = new ManagedClusterAPIServerAccessProfileArgs();
 
         public InputMap<ManagedClusterAddonProfileArgs>AddonProfiles = new InputMap<ManagedClusterAddonProfileArgs>();
@@ -94,6 +96,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
             Arguments.AadProfile = AadProfile;
             Arguments.ApiServerAccessProfile = SecurityProfileArgs;
             Arguments.AddonProfiles = AddonProfiles;
+            Arguments.AutoScalerProfile = AutoScalerProfile;
             var cluster = new ManagedCluster(Name, Arguments, cro);
             return cluster;
         }

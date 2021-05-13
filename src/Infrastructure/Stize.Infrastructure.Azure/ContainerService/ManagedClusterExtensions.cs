@@ -83,6 +83,12 @@ namespace Stize.Infrastructure.Azure.ContainerService
             return builder;
         }
 
+        public static ManagedClusterBuilder DisableLocalAccounts(this ManagedClusterBuilder builder)
+        {
+            builder.Arguments.DisableLocalAccounts = true;
+            return builder;
+        }
+
         /// <summary>
         /// The Sku details for the Managed Cluster: Sku name and Sku tier.
         /// </summary>
@@ -414,36 +420,6 @@ namespace Stize.Infrastructure.Azure.ContainerService
         }
 
 
-        public static ManagedClusterBuilder LoadBalancerProfile(this ManagedClusterBuilder builder)
-        {
-            builder.Arguments.NetworkProfile = new ContainerServiceNetworkProfileArgs
-            {
-                LoadBalancerProfile = new ManagedClusterLoadBalancerProfileArgs // A load_balancer_profile block. This can only be specified when load_balancer_sku is set to Standard
-                {
-                    EffectiveOutboundIPs = new InputList<ResourceReferenceArgs>
-                    {
-                        new ResourceReferenceArgs { Id = "" }
-                    },
-                    OutboundIPPrefixes = new ManagedClusterLoadBalancerProfileOutboundIPPrefixesArgs
-                    {
-                        PublicIPPrefixes = new InputList<ResourceReferenceArgs>
-                        {
-                            new ResourceReferenceArgs { Id = "" } // The ID of the outbound Public IP Address Prefixes which should be used for the cluster load balancer.
-                        }
-                    },
-                    OutboundIPs = new ManagedClusterLoadBalancerProfileOutboundIPsArgs
-                    {
-                        PublicIPs = new InputList<ResourceReferenceArgs>
-                        {
-                            new ResourceReferenceArgs { Id = "" } // he ID of the Public IP Addresses which should be used for outbound communication for the cluster load balancer.
-                        }
-                    },
-                },
-                NetworkMode = NetworkMode.Transparent, // Might be useless. Can only be set to 'bridge' for existing clusters and cannot be used to provision new clusters. Can only be set when NetworkPlugin is set to 'azure'.
-            };
-            return builder;
-        }
-
         /// <summary>
         /// Virtual nodes enable network communication between pods that run in Azure Container Instances (ACI) and the AKS cluster.
         /// Enabling virtual nodes allows you to deploy or burst out containers to nodes backed by serverless Azure Container Instances. 
@@ -741,5 +717,210 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// Need to figure out a good way to add AutoScaler properties.
         /// There's a lot.
         /// https://www.pulumi.com/docs/reference/pkg/azure-native/containerservice/managedcluster/#managedclusterpropertiesautoscalerprofile
+
+        /// <summary>
+        /// Detect similar node groups and balance the number of nodes between them. Defaults to false.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="isEnabled">Detect similar node groups and balance the number of nodes between them. Defaults to false.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder BalanceSimilarNodeGroups(this ManagedClusterBuilder builder, Input<bool> isEnabled)
+        {
+            builder.AutoScalerProfile.BalanceSimilarNodeGroups = isEnabled.Apply(e => e.ToString());
+            return builder;
+        }
+
+        /// <summary>
+        /// Expander to use. Possible values are 'least-waste', 'priority', 'most-pods' and 'random'. Defaults to 'random'.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="expander">Expander to use. Possible values are 'least-waste', 'priority', 'most-pods' and 'random'. Defaults to 'random'.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder ExpanderType(this ManagedClusterBuilder builder, InputUnion<string,Expander> expander)
+        {
+            builder.AutoScalerProfile.Expander = expander;
+            return builder;
+        }
+
+        /// <summary>
+        /// Maximum number of seconds the cluster autoscaler waits for pod termination when trying to scale down a node. Defaults to 600.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="seconds">Maximum number of seconds the cluster autoscaler waits for pod termination when trying to scale down a node. Defaults to 600.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder MaxWaitForPodTermination(this ManagedClusterBuilder builder, Input<int> seconds)
+        {
+            builder.AutoScalerProfile.MaxGracefulTerminationSec = seconds.Apply(e=>e.ToString());
+            return builder;
+        }
+
+        /// <summary>
+        /// Maximum time the autoscaler waits for a node to be provisioned. Defaults to 15m.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="minutes">Maximum time the autoscaler waits for a node to be provisioned. Defaults to 15m.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder MaxWaitForProvisioningNode(this ManagedClusterBuilder builder, Input<int> minutes)
+        {
+            builder.AutoScalerProfile.MaxNodeProvisionTime = minutes.Apply(e => e.ToString());
+            return builder;
+        }
+
+        /// <summary>
+        /// Maximum Number of allowed unready nodes. Defaults to 3.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="numberOfNodes">Maximum Number of allowed unready nodes. Defaults to 3.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder MaxNumberOfUnreadyNodes(this ManagedClusterBuilder builder, Input<int> numberOfNodes)
+        {
+            builder.AutoScalerProfile.OkTotalUnreadyCount = numberOfNodes.Apply(e => e.ToString());
+            return builder;
+        }
+
+        /// <summary>
+        /// Maximum percentage of unready nodes the cluster autoscaler will stop if the percentage is exceeded. Defaults to 45.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="percentage">Maximum percentage of unready nodes the cluster autoscaler will stop if the percentage is exceeded. Defaults to 45.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder MaxPercentOfUnreadyNodes(this ManagedClusterBuilder builder, Input<int> percentage)
+        {
+            builder.AutoScalerProfile.MaxTotalUnreadyPercentage = percentage.Apply(e => e.ToString());
+            return builder;
+        }
+
+        /// <summary>
+        /// For scenarios like burst/batch scale where you don't want CA to act before the kubernetes scheduler could schedule all the pods, 
+        /// you can tell CA to ignore unscheduled pods before they're a certain age. Defaults to 10s.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="seconds">For scenarios like burst/batch scale where you don't want CA to act before the kubernetes scheduler could schedule all the pods, 
+        /// you can tell CA to ignore unscheduled pods before they're a certain age. Defaults to 10s.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder NewPodScaleUpDelay(this ManagedClusterBuilder builder, Input<int> seconds)
+        {
+            builder.AutoScalerProfile.NewPodScaleUpDelay = seconds.Apply(e => e.ToString());
+            return builder;
+        }
+
+        /// <summary>
+        /// How long after the scale up of AKS nodes the scale down evaluation resumes. Defaults to 10m.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="minutes">How long after the scale up of AKS nodes the scale down evaluation resumes. Defaults to 10m.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder ScaleDownDelayAfterAdd(this ManagedClusterBuilder builder, Input<int> minutes)
+        {
+            builder.AutoScalerProfile.ScaleDownDelayAfterAdd = minutes.Apply(e => e.ToString());
+            return builder;
+        }
+
+        /// <summary>
+        /// How long after node deletion that scale down evaluation resumes. Defaults to the value used for ScanInterval.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="seconds">How long after node deletion that scale down evaluation resumes. Defaults to the value used for ScanInterval.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder ScaleDownDelayAfterDelete(this ManagedClusterBuilder builder, Input<int> seconds)
+        {
+            builder.AutoScalerProfile.ScaleDownDelayAfterDelete = seconds.Apply(e => e.ToString());
+            return builder;
+        }
+
+        /// <summary>
+        /// How long after scale down failure that scale down evaluation resumes. Defaults to 3m.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="minutes">How long after scale down failure that scale down evaluation resumes. Defaults to 3m.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder ScaleDownDelayAfterFailure(this ManagedClusterBuilder builder, Input<int> minutes)
+        {
+            builder.AutoScalerProfile.ScaleDownDelayAfterFailure = minutes.Apply(e => e.ToString());
+            return builder;
+        }
+
+        /// <summary>
+        /// How often the AKS Cluster should be re-evaluated for scale up/down. Defaults to 10s.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="seconds">How often the AKS Cluster should be re-evaluated for scale up/down. Defaults to 10s.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder ScanInterval(this ManagedClusterBuilder builder, Input<int> seconds)
+        {
+            builder.AutoScalerProfile.ScanInterval = seconds.Apply(e => e.ToString());
+            return builder;
+        }
+
+        /// <summary>
+        /// How long a node should be unneeded before it is eligible for scale down. Defaults to 10m.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="minutes">How long a node should be unneeded before it is eligible for scale down. Defaults to 10m.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder ScaleDownUnneededNodes(this ManagedClusterBuilder builder, Input<int> minutes)
+        {
+            builder.AutoScalerProfile.ScaleDownUnneededTime = minutes.Apply(e => e.ToString());
+            return builder;
+        }
+
+        /// <summary>
+        /// How long an unready node should be unneeded before it is eligible for scale down. Defaults to 20m.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="minutes">How long an unready node should be unneeded before it is eligible for scale down. Defaults to 20m.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder ScaleDownUnnreadyNodes(this ManagedClusterBuilder builder, Input<int> minutes)
+        {
+            builder.AutoScalerProfile.ScaleDownUnneededTime = minutes.Apply(e => e.ToString());
+            return builder;
+        }
+
+        /// <summary>
+        /// Node utilization level, defined as sum of requested resources divided by capacity, below which a node can be considered for scale down. Defaults to 0.5.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="threshold">Node utilization level, defined as sum of requested resources divided by capacity, below which a node can be considered for scale down. Defaults to 0.5.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder ScaleDownUtilizationThreshold(this ManagedClusterBuilder builder, Input<int> threshold)
+        {
+            builder.AutoScalerProfile.ScaleDownUtilizationThreshold = threshold.Apply(e => e.ToString());
+            return builder;
+        }
+
+
+        /// <summary>
+        /// Maximum number of empty nodes that can be deleted at the same time. Defaults to 10.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="maxNodes">Maximum number of empty nodes that can be deleted at the same time. Defaults to 10.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder MaxBulkDeleteOfNodes(this ManagedClusterBuilder builder, Input<int> maxNodes)
+        {
+            builder.AutoScalerProfile.MaxEmptyBulkDelete = maxNodes.Apply(e => e.ToString());
+            return builder;
+        }
+
+        /// <summary>
+        /// Allows the cluster autoscaler to delete nodes with pods that have local storage, when necessary.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder AllowDeletionOfNodesWithLocalStorage(this ManagedClusterBuilder builder)
+        {
+            builder.AutoScalerProfile.SkipNodesWithLocalStorage = "false";
+            return builder;
+        }
+
+        /// <summary>
+        /// Allows the cluster autoscaler to delete nodes with pods from Kube-System, when necessary.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder AllowDeletionOfNodesWithKubeSystem(this ManagedClusterBuilder builder)
+        {
+            builder.AutoScalerProfile.SkipNodesWithSystemPods = "false";
+            return builder;
+        }
     }
 }
