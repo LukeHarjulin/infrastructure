@@ -72,17 +72,22 @@ namespace Stize.Infrastructure.Azure.ContainerService
         }
 
         /// <summary>
-        /// Decide whether to enable or disable RBAC Role-Based Access Control.
+        /// Enables Kubernetes Role-Based Access Control.
         /// </summary>
         /// <param name="builder"></param>
         /// <param name="enableRbac">Set to 'true' to enable RBAC; set to 'false' to disable RBAC.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder EnableRBAC(this ManagedClusterBuilder builder, Input<bool> enableRbac)
+        public static ManagedClusterBuilder EnableRBAC(this ManagedClusterBuilder builder)
         {
-            builder.Arguments.EnableRBAC = enableRbac;
+            builder.Arguments.EnableRBAC = true;
             return builder;
         }
 
+        /// <summary>
+        /// Getting static credential will be disabled for this cluster. Expected to only be used for AAD clusters.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <returns></returns>
         public static ManagedClusterBuilder DisableLocalAccounts(this ManagedClusterBuilder builder)
         {
             builder.Arguments.DisableLocalAccounts = true;
@@ -110,9 +115,15 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="agentPools">Add Agent pools to the Managed Cluster. Use the <see cref="AgentPoolBuilder"/> to construct Agent pools and pass them into this method. 
         /// Multiple Agent pools can be passed into this method by using a comma-separated list of Agent pools.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder AddAgentPool(this ManagedClusterBuilder builder, params Input<ManagedClusterAgentPoolProfileArgs>[] agentPools)
+        //public static ManagedClusterBuilder AddAgentPool(this ManagedClusterBuilder builder, params Input<ManagedClusterAgentPoolProfileArgs>[] agentPools)
+        //{
+        //    builder.Arguments.AgentPoolProfiles = agentPools; // NEED TO LOOK INTO THIS MORE. SEE "default_node_pool" on https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/kubernetes_cluster
+        //    return builder;
+        //}
+
+        public static AgentPoolBuilder AddAgentPool(this ManagedClusterBuilder clusterBuilder)
         {
-            builder.Arguments.AgentPoolProfiles = agentPools; // NEED TO LOOK INTO THIS MORE. SEE "default_node_pool" on https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/kubernetes_cluster
+            var builder = new AgentPoolBuilder(clusterBuilder);
             return builder;
         }
 
@@ -197,7 +208,9 @@ namespace Stize.Infrastructure.Azure.ContainerService
             builder.Arguments.Identity = new ManagedClusterIdentityArgs
             {
                 Type = ResourceIdentityType.UserAssigned,
-                UserAssignedIdentities = new InputMap<object> { { userId, userName } }
+                UserAssignedIdentities = new InputMap<object> { { userId, userName} }
+                /// This stupid InputMap input type doesn't work. 
+                /// When Id is provided it throws an error, when you set it to null (like it asks) it throws another error.
             };
             return builder;
         }
@@ -222,7 +235,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="tenantId">The Tenant ID used for Azure Active Directory Application.</param>
         /// <param name="adminGroupObjectIDs">A comma-seperated list of Object IDs of Azure Active Directory Groups which should have Admin Role on the Cluster.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder EnableAKSManagedAzureAD(this ManagedClusterBuilder builder, Input<string> tenantId, params Input<string>[] adminGroupObjectIDs)
+        public static ManagedClusterBuilder EnableAKSManagedAzureAD(this ManagedClusterBuilder builder, Input<string> tenantId = null, params Input<string>[] adminGroupObjectIDs)
         {
             builder.Arguments.EnableRBAC = true;
             builder.AadProfile.Managed = true;
@@ -430,12 +443,50 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <returns></returns>
         public static ManagedClusterBuilder EnableVirtualNodes(this ManagedClusterBuilder builder, Input<string> subnetName)
         {
-            builder.AddonProfiles.Add("aci_connector_linux", new ManagedClusterAddonProfileArgs
+            builder.AddonProfiles.Add("aciConnectorLinux", new ManagedClusterAddonProfileArgs
             {
                 Enabled = true,
                 Config = new InputMap<string>
                 {
-                    { "subnet_name", subnetName }
+                    { "subnetName", subnetName }
+                }
+            });
+            return builder;
+        }
+
+        /// <summary>
+        /// The name of the resource group that will contain all of the agent pool nodes.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="resourceGroupName">The name of the resource group that will contain all of the agent pool nodes.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder NewNodeResourceGroupName(this ManagedClusterBuilder builder, Input<string> resourceGroupName)
+        {
+            builder.Arguments.NodeResourceGroup = resourceGroupName;
+            return builder;
+        }
+
+        /// <summary>
+        /// The Application Gateway Ingress Controller (AGIC) is a Kubernetes application, which makes it possible for 
+        /// Azure Kubernetes Service (AKS) customers to leverage Azure's native Application Gateway L7 load-balancer to expose cloud software to the Internet.
+        /// See <see href="https://docs.microsoft.com/en-us/azure/application-gateway/ingress-controller-overview">this link</see> and 
+        /// <see href="https://docs.microsoft.com/en-us/azure/application-gateway/tutorial-ingress-controller-add-on-existing">this link</see> for further details.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="appGatewayName">The Name of the new Application Gateway to integrate with the ingress controller of this Kubernetes Cluster. 
+        /// See <see href="https://docs.microsoft.com/en-us/azure/application-gateway/tutorial-ingress-controller-add-on-existing">this link</see> for further details.</param>
+        /// <param name="subnetAddressRange">The subnet CIDR to be used to create an Application Gateway, which in turn will be integrated with the ingress controller of this Kubernetes Cluster. 
+        /// See <see href="https://docs.microsoft.com/en-us/azure/application-gateway/tutorial-ingress-controller-add-on-existing">this link</see> for further details.</param>
+        /// <returns></returns>
+        public static ManagedClusterBuilder EnableIngressWithNewAppGateway(this ManagedClusterBuilder builder, Input<string> appGatewayName, Input<string> subnetAddressRange)
+        {
+            builder.AddonProfiles.Add("ingressApplicationGateway", new ManagedClusterAddonProfileArgs
+            {
+                Enabled = true,
+                Config = new InputMap<string>
+                {
+                    { "applicationGatewayName", appGatewayName},
+                    { "subnetPrefix", subnetAddressRange },
                 }
             });
             return builder;
@@ -448,23 +499,17 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <see href="https://docs.microsoft.com/en-us/azure/application-gateway/tutorial-ingress-controller-add-on-existing">this link</see> for further details.
         /// </summary>
         /// <param name="builder"></param>
-        /// <param name="gatewayId">The ID of the Application Gateway to integrate with the ingress controller of this Kubernetes Cluster. 
-        /// See <see href="https://docs.microsoft.com/en-us/azure/application-gateway/tutorial-ingress-controller-add-on-existing">this link</see> for further details.</param>
-        /// <param name="subnetAddressRange">The subnet CIDR to be used to create an Application Gateway, which in turn will be integrated with the ingress controller of this Kubernetes Cluster. 
-        /// See <see href="https://docs.microsoft.com/en-us/azure/application-gateway/tutorial-ingress-controller-add-on-existing">this link</see> for further details.</param>
-        /// <param name="subnetID">The ID of the subnet on which to create an Application Gateway, which in turn will be integrated with the ingress controller of this Kubernetes Cluster.
+        /// <param name="appGatewayId">The ID of an existing Application Gateway, which in turn will be integrated with the ingress controller of this Kubernetes Cluster.
         /// See <see href="https://docs.microsoft.com/en-us/azure/application-gateway/tutorial-ingress-controller-add-on-existing">this link</see> for further details.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder EnableIngressAppGateway(this ManagedClusterBuilder builder, Input<string> gatewayId = null, Input<string> subnetAddressRange = null, Input<string> subnetID = null)
+        public static ManagedClusterBuilder EnableIngressWithExistingAppGateway(this ManagedClusterBuilder builder, Input<string> appGatewayId)
         {
-            builder.AddonProfiles.Add("ingress_application_gateway", new ManagedClusterAddonProfileArgs
+            builder.AddonProfiles.Add("ingressApplicationGateway", new ManagedClusterAddonProfileArgs
             {
                 Enabled = true,
                 Config = new InputMap<string>
                 {
-                    { "gateway_id", gatewayId },
-                    { "subnet_cidr", subnetAddressRange},
-                    { "subnet_id", subnetID },
+                    { "applicationGatewayId", appGatewayId},
                 }
             });
             return builder;
@@ -482,12 +527,12 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <returns></returns>
         public static ManagedClusterBuilder EnableContainerInsights(this ManagedClusterBuilder builder, Input<string> logAnalyticsWorkspaceId)
         {
-            builder.AddonProfiles.Add("oms_agent", new ManagedClusterAddonProfileArgs
+            builder.AddonProfiles.Add("omsAgent", new ManagedClusterAddonProfileArgs
             {
                 Enabled = true,
                 Config = new InputMap<string>
                 {
-                    { "log_analytics_workspace_id", logAnalyticsWorkspaceId },
+                    { "logAnalyticsWorkspaceResourceID", logAnalyticsWorkspaceId },
                 }
             });
             return builder;
@@ -505,7 +550,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <returns></returns>
         public static ManagedClusterBuilder EnableKubeDashboard(this ManagedClusterBuilder builder)
         {
-            builder.AddonProfiles.Add("kube_dashboard", new ManagedClusterAddonProfileArgs
+            builder.AddonProfiles.Add("kubeDashboard", new ManagedClusterAddonProfileArgs
             {
                 Enabled = true,
             });
@@ -522,7 +567,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <returns></returns>
         public static ManagedClusterBuilder EnableHttpAppRouting(this ManagedClusterBuilder builder)
         {
-            builder.AddonProfiles.Add("http_application_routing", new ManagedClusterAddonProfileArgs
+            builder.AddonProfiles.Add("httpApplicationRouting", new ManagedClusterAddonProfileArgs
             {
                 Enabled = true,
             });
@@ -532,12 +577,14 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <summary>
         /// Azure Policy makes it possible to manage and report on the compliance state of your Kubernetes clusters from one place. 
         /// Azure Policy for Kubernetes only supports Linux node pools and built-in policy definitions. Built-in policy definitions are in the Kubernetes category. 
+        /// 
+        /// %%% CURRENTLY BROKEN %%%
         /// </summary>
         /// <param name="builder"></param>
         /// <returns></returns>
         public static ManagedClusterBuilder EnableAzurePolicy(this ManagedClusterBuilder builder)
         {
-            builder.AddonProfiles.Add("azure_policy", new ManagedClusterAddonProfileArgs
+            builder.AddonProfiles.Add("azurePolicy", new ManagedClusterAddonProfileArgs 
             {
                 Enabled = true,
             });
@@ -724,9 +771,9 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="builder"></param>
         /// <param name="isEnabled">Detect similar node groups and balance the number of nodes between them. Defaults to false.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder BalanceSimilarNodeGroups(this ManagedClusterBuilder builder, Input<bool> isEnabled)
+        public static ManagedClusterBuilder BalanceSimilarNodeGroups(this ManagedClusterBuilder builder, bool isEnabled)
         {
-            builder.AutoScalerProfile.BalanceSimilarNodeGroups = isEnabled.Apply(e => e.ToString());
+            builder.AutoScalerProfile.BalanceSimilarNodeGroups = isEnabled.ToString().ToLower();
             return builder;
         }
 
@@ -748,9 +795,9 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="builder"></param>
         /// <param name="seconds">Maximum number of seconds the cluster autoscaler waits for pod termination when trying to scale down a node. Defaults to 600.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder MaxWaitForPodTermination(this ManagedClusterBuilder builder, Input<int> seconds)
+        public static ManagedClusterBuilder MaxWaitForPodTermination(this ManagedClusterBuilder builder, int seconds)
         {
-            builder.AutoScalerProfile.MaxGracefulTerminationSec = seconds.Apply(e=>e.ToString());
+            builder.AutoScalerProfile.MaxGracefulTerminationSec = seconds + "s";
             return builder;
         }
 
@@ -760,9 +807,9 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="builder"></param>
         /// <param name="minutes">Maximum time the autoscaler waits for a node to be provisioned. Defaults to 15m.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder MaxWaitForProvisioningNode(this ManagedClusterBuilder builder, Input<int> minutes)
+        public static ManagedClusterBuilder MaxWaitForProvisioningNode(this ManagedClusterBuilder builder, int minutes)
         {
-            builder.AutoScalerProfile.MaxNodeProvisionTime = minutes.Apply(e => e.ToString());
+            builder.AutoScalerProfile.MaxNodeProvisionTime = minutes + "m";
             return builder;
         }
 
@@ -772,9 +819,9 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="builder"></param>
         /// <param name="numberOfNodes">Maximum Number of allowed unready nodes. Defaults to 3.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder MaxNumberOfUnreadyNodes(this ManagedClusterBuilder builder, Input<int> numberOfNodes)
+        public static ManagedClusterBuilder MaxNumberOfUnreadyNodes(this ManagedClusterBuilder builder, int numberOfNodes)
         {
-            builder.AutoScalerProfile.OkTotalUnreadyCount = numberOfNodes.Apply(e => e.ToString());
+            builder.AutoScalerProfile.OkTotalUnreadyCount = numberOfNodes.ToString();
             return builder;
         }
 
@@ -784,9 +831,9 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="builder"></param>
         /// <param name="percentage">Maximum percentage of unready nodes the cluster autoscaler will stop if the percentage is exceeded. Defaults to 45.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder MaxPercentOfUnreadyNodes(this ManagedClusterBuilder builder, Input<int> percentage)
+        public static ManagedClusterBuilder MaxPercentOfUnreadyNodes(this ManagedClusterBuilder builder, int percentage)
         {
-            builder.AutoScalerProfile.MaxTotalUnreadyPercentage = percentage.Apply(e => e.ToString());
+            builder.AutoScalerProfile.MaxTotalUnreadyPercentage = percentage.ToString();
             return builder;
         }
 
@@ -798,9 +845,9 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="seconds">For scenarios like burst/batch scale where you don't want CA to act before the kubernetes scheduler could schedule all the pods, 
         /// you can tell CA to ignore unscheduled pods before they're a certain age. Defaults to 10s.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder NewPodScaleUpDelay(this ManagedClusterBuilder builder, Input<int> seconds)
+        public static ManagedClusterBuilder NewPodScaleUpDelay(this ManagedClusterBuilder builder, int seconds)
         {
-            builder.AutoScalerProfile.NewPodScaleUpDelay = seconds.Apply(e => e.ToString());
+            builder.AutoScalerProfile.NewPodScaleUpDelay = seconds + "s";
             return builder;
         }
 
@@ -810,9 +857,9 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="builder"></param>
         /// <param name="minutes">How long after the scale up of AKS nodes the scale down evaluation resumes. Defaults to 10m.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder ScaleDownDelayAfterAdd(this ManagedClusterBuilder builder, Input<int> minutes)
+        public static ManagedClusterBuilder ScaleDownDelayAfterAdd(this ManagedClusterBuilder builder, int minutes)
         {
-            builder.AutoScalerProfile.ScaleDownDelayAfterAdd = minutes.Apply(e => e.ToString());
+            builder.AutoScalerProfile.ScaleDownDelayAfterAdd = minutes + "m";
             return builder;
         }
 
@@ -822,9 +869,9 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="builder"></param>
         /// <param name="seconds">How long after node deletion that scale down evaluation resumes. Defaults to the value used for ScanInterval.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder ScaleDownDelayAfterDelete(this ManagedClusterBuilder builder, Input<int> seconds)
+        public static ManagedClusterBuilder ScaleDownDelayAfterDelete(this ManagedClusterBuilder builder, int seconds)
         {
-            builder.AutoScalerProfile.ScaleDownDelayAfterDelete = seconds.Apply(e => e.ToString());
+            builder.AutoScalerProfile.ScaleDownDelayAfterDelete = seconds + "s";
             return builder;
         }
 
@@ -834,9 +881,9 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="builder"></param>
         /// <param name="minutes">How long after scale down failure that scale down evaluation resumes. Defaults to 3m.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder ScaleDownDelayAfterFailure(this ManagedClusterBuilder builder, Input<int> minutes)
+        public static ManagedClusterBuilder ScaleDownDelayAfterFailure(this ManagedClusterBuilder builder, int minutes)
         {
-            builder.AutoScalerProfile.ScaleDownDelayAfterFailure = minutes.Apply(e => e.ToString());
+            builder.AutoScalerProfile.ScaleDownDelayAfterFailure = minutes + "m";
             return builder;
         }
 
@@ -846,9 +893,9 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="builder"></param>
         /// <param name="seconds">How often the AKS Cluster should be re-evaluated for scale up/down. Defaults to 10s.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder ScanInterval(this ManagedClusterBuilder builder, Input<int> seconds)
+        public static ManagedClusterBuilder ScanInterval(this ManagedClusterBuilder builder, int seconds)
         {
-            builder.AutoScalerProfile.ScanInterval = seconds.Apply(e => e.ToString());
+            builder.AutoScalerProfile.ScanInterval = seconds + "s";
             return builder;
         }
 
@@ -858,9 +905,9 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="builder"></param>
         /// <param name="minutes">How long a node should be unneeded before it is eligible for scale down. Defaults to 10m.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder ScaleDownUnneededNodes(this ManagedClusterBuilder builder, Input<int> minutes)
+        public static ManagedClusterBuilder ScaleDownUnneededNodes(this ManagedClusterBuilder builder, int minutes)
         {
-            builder.AutoScalerProfile.ScaleDownUnneededTime = minutes.Apply(e => e.ToString());
+            builder.AutoScalerProfile.ScaleDownUnneededTime = minutes + "m";
             return builder;
         }
 
@@ -870,9 +917,9 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="builder"></param>
         /// <param name="minutes">How long an unready node should be unneeded before it is eligible for scale down. Defaults to 20m.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder ScaleDownUnnreadyNodes(this ManagedClusterBuilder builder, Input<int> minutes)
+        public static ManagedClusterBuilder ScaleDownUnreadyNodes(this ManagedClusterBuilder builder, int minutes)
         {
-            builder.AutoScalerProfile.ScaleDownUnneededTime = minutes.Apply(e => e.ToString());
+            builder.AutoScalerProfile.ScaleDownUnneededTime = minutes + "m";
             return builder;
         }
 
@@ -882,9 +929,9 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="builder"></param>
         /// <param name="threshold">Node utilization level, defined as sum of requested resources divided by capacity, below which a node can be considered for scale down. Defaults to 0.5.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder ScaleDownUtilizationThreshold(this ManagedClusterBuilder builder, Input<int> threshold)
+        public static ManagedClusterBuilder ScaleDownUtilizationThreshold(this ManagedClusterBuilder builder, Input<string> threshold)
         {
-            builder.AutoScalerProfile.ScaleDownUtilizationThreshold = threshold.Apply(e => e.ToString());
+            builder.AutoScalerProfile.ScaleDownUtilizationThreshold = threshold;
             return builder;
         }
 
@@ -895,9 +942,9 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="builder"></param>
         /// <param name="maxNodes">Maximum number of empty nodes that can be deleted at the same time. Defaults to 10.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder MaxBulkDeleteOfNodes(this ManagedClusterBuilder builder, Input<int> maxNodes)
+        public static ManagedClusterBuilder MaxBulkDeleteOfNodes(this ManagedClusterBuilder builder, int maxNodes)
         {
-            builder.AutoScalerProfile.MaxEmptyBulkDelete = maxNodes.Apply(e => e.ToString());
+            builder.AutoScalerProfile.MaxEmptyBulkDelete = maxNodes.ToString();
             return builder;
         }
 
@@ -920,6 +967,13 @@ namespace Stize.Infrastructure.Azure.ContainerService
         public static ManagedClusterBuilder AllowDeletionOfNodesWithKubeSystem(this ManagedClusterBuilder builder)
         {
             builder.AutoScalerProfile.SkipNodesWithSystemPods = "false";
+            return builder;
+        }
+
+
+        public static ManagedClusterBuilder EnablePodIdentityAddon(this ManagedClusterBuilder builder)
+        {
+            // NEEDS FINISHING
             return builder;
         }
     }

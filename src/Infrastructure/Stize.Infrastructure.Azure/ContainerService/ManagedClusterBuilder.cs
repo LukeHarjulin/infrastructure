@@ -39,7 +39,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
 
         public ManagedClusterAPIServerAccessProfileArgs SecurityProfileArgs = new ManagedClusterAPIServerAccessProfileArgs();
 
-        public InputMap<ManagedClusterAddonProfileArgs>AddonProfiles = new InputMap<ManagedClusterAddonProfileArgs>();
+        public InputMap<ManagedClusterAddonProfileArgs> AddonProfiles = new InputMap<ManagedClusterAddonProfileArgs>();
 
         public ManagedClusterAADProfileArgs AadProfile = new ManagedClusterAADProfileArgs();
 
@@ -90,7 +90,6 @@ namespace Stize.Infrastructure.Azure.ContainerService
         {
             Arguments.ResourceName = ResourceStrategy.Naming.GenerateName(Arguments.ResourceName);
             ResourceStrategy.Tagging.AddTags(Arguments.Tags);
-            Arguments.AgentPoolProfiles.Add(PrimaryAgentPool);
             NetworkProfile.LoadBalancerProfile = LoadBalancerProfile;
             Arguments.NetworkProfile = NetworkProfile;
             Arguments.AadProfile = AadProfile;
