@@ -48,7 +48,8 @@ namespace Stize.Infrastructure.Azure.ContainerService
         }
 
         /// <summary>
-        /// Dns prefix for the Managed Cluster.
+        /// Dns name prefix for the Managed Cluster.
+        /// For example, "mc1-dns".
         /// </summary>
         /// <param name="builder"></param>
         /// <param name="dnsPrefix">Dns Prefix</param>
@@ -75,7 +76,6 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// Enables Kubernetes Role-Based Access Control.
         /// </summary>
         /// <param name="builder"></param>
-        /// <param name="enableRbac">Set to 'true' to enable RBAC; set to 'false' to disable RBAC.</param>
         /// <returns></returns>
         public static ManagedClusterBuilder EnableRBAC(this ManagedClusterBuilder builder)
         {
@@ -85,6 +85,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
 
         /// <summary>
         /// Getting static credential will be disabled for this cluster. Expected to only be used for AAD clusters.
+        /// Requires preview mode.
         /// </summary>
         /// <param name="builder"></param>
         /// <returns></returns>
@@ -108,27 +109,29 @@ namespace Stize.Infrastructure.Azure.ContainerService
         }
 
         /// <summary>
-        /// Adds Agent node pools to the Managed Cluster. Use the <see cref="AgentPoolBuilder"/> to construct an Agent pool and pass it into this method.
-        /// Multiple Agent pools can be passed into this method by using a comma-separated list of Agent pools.
+        /// Construct an agent node pool to the Managed Cluster. After calling this method, a new
+        /// <see cref="AgentPoolBuilder"/> is returned, providing access to all of the <see
+        /// cref="AgentPoolExtensions"/>. Once the agent pool is finished, call the .Build() method
+        /// and the current <see cref="ManagedClusterBuilder"/> will be returned. For example, new
+        /// ManagedClusterBuilder("mc1").Name("mc1") ... .AddAgentPool().Name("ap1").Build() ... .Build();
         /// </summary>
-        /// <param name="builder"></param>
-        /// <param name="agentPools">Add Agent pools to the Managed Cluster. Use the <see cref="AgentPoolBuilder"/> to construct Agent pools and pass them into this method. 
-        /// Multiple Agent pools can be passed into this method by using a comma-separated list of Agent pools.</param>
+        /// <param name="clusterBuilder"></param>
         /// <returns></returns>
-        //public static ManagedClusterBuilder AddAgentPool(this ManagedClusterBuilder builder, params Input<ManagedClusterAgentPoolProfileArgs>[] agentPools)
-        //{
-        //    builder.Arguments.AgentPoolProfiles = agentPools; // NEED TO LOOK INTO THIS MORE. SEE "default_node_pool" on https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/kubernetes_cluster
-        //    return builder;
-        //}
-
         public static AgentPoolBuilder AddAgentPool(this ManagedClusterBuilder clusterBuilder)
         {
-            var builder = new AgentPoolBuilder(clusterBuilder);
+            var builder = new AgentPoolBuilder(clusterBuilder); 
+            /// Might be a better method. Require user to pass in AgentPoolBuilder
+            /// for example:
+            /// AddAgentPool(new AgentPoolBuilder()
+            ///     .Name("ap1")
+            ///     .NodeCount(4)
+            ///     )
             return builder;
         }
 
         /// <summary>
-        /// Set the service principal profile of the Managed Cluster with an existing service principal, using its client ID and the secret.
+        /// Set the service principal profile of the Managed Cluster with an existing service
+        /// principal, using its client ID and the secret.
         /// </summary>
         /// <param name="builder"></param>
         /// <param name="clientID">ID of the service principal.</param>
@@ -196,6 +199,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
         }
 
         /// <summary>
+        /// %%% NEEDS FIX %%%
         /// Sets the type of identity management for the <see cref="ManagedCluster"/> to user-assigned managed identity.
         /// The resource ID of the user-assigned managed identity must be provided, along with the name of the resource.
         /// </summary>
@@ -386,7 +390,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
             }
             builder.LoadBalancerProfile.OutboundIPs = new ManagedClusterLoadBalancerProfileOutboundIPsArgs { PublicIPs = publicIPs };
 
-            // NEED TO FIND OUT THE DIFFERENCE BETWEEN 'OutboundIPs' and 'EffectiveOutboundIPs'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            // NEED TO FIND OUT THE DIFFERENCE BETWEEN 'OutboundIPs' and 'EffectiveOutboundIPs'!!!
             // https://www.pulumi.com/docs/reference/pkg/azure-native/containerservice/managedcluster/#managedclusterloadbalancerprofile
             return builder;
         }
@@ -434,6 +438,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
 
 
         /// <summary>
+        /// %%% NEEDS FIX %%%
         /// Virtual nodes enable network communication between pods that run in Azure Container Instances (ACI) and the AKS cluster.
         /// Enabling virtual nodes allows you to deploy or burst out containers to nodes backed by serverless Azure Container Instances. 
         /// This can provide fast burst scaling options beyond your defined cluster size.
@@ -455,12 +460,13 @@ namespace Stize.Infrastructure.Azure.ContainerService
         }
 
         /// <summary>
-        /// The name of the resource group that will contain all of the agent pool nodes.
+        /// The name of the resource group that will contain all of the agent pool nodes and 
+        /// other additional resources that are created (i.e. Public IPs, Vnets).
         /// </summary>
         /// <param name="builder"></param>
         /// <param name="resourceGroupName">The name of the resource group that will contain all of the agent pool nodes.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder NewNodeResourceGroupName(this ManagedClusterBuilder builder, Input<string> resourceGroupName)
+        public static ManagedClusterBuilder AddedResourceGroupName(this ManagedClusterBuilder builder, Input<string> resourceGroupName)
         {
             builder.Arguments.NodeResourceGroup = resourceGroupName;
             return builder;
@@ -642,6 +648,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
         }
 
         /// <summary>
+        /// %%% NEEDS FIX %%%
         /// Sets up the profile for the Linux VMs in the Managed Cluster, setting the username as specified (default value is "stize") and 
         /// generating a new Elliptic Curve private key (default EC is 'P224') for SSH.
         /// </summary>
@@ -764,7 +771,6 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// Need to figure out a good way to add AutoScaler properties.
         /// There's a lot.
         /// https://www.pulumi.com/docs/reference/pkg/azure-native/containerservice/managedcluster/#managedclusterpropertiesautoscalerprofile
-
         /// <summary>
         /// Detect similar node groups and balance the number of nodes between them. Defaults to false.
         /// </summary>
@@ -935,7 +941,6 @@ namespace Stize.Infrastructure.Azure.ContainerService
             return builder;
         }
 
-
         /// <summary>
         /// Maximum number of empty nodes that can be deleted at the same time. Defaults to 10.
         /// </summary>
@@ -974,6 +979,9 @@ namespace Stize.Infrastructure.Azure.ContainerService
         public static ManagedClusterBuilder EnablePodIdentityAddon(this ManagedClusterBuilder builder)
         {
             // NEEDS FINISHING
+            builder.Arguments.PodIdentityProfile = new ManagedClusterPodIdentityProfileArgs
+            {
+            };
             return builder;
         }
     }

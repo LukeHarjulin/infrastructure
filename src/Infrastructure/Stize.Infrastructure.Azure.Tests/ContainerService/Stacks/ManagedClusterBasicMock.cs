@@ -5,7 +5,7 @@ using System.Collections.Immutable;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Stize.Infrastructure.Azure.Tests.ContainerService.Stacks
+namespace Stize.Infrastructure.Tests.Azure.ContainerService.Stacks
 {
     public class ManagedClusterBasicMock : IMocks
     {
@@ -27,6 +27,8 @@ namespace Stize.Infrastructure.Azure.Tests.ContainerService.Stacks
             switch (args.Type)
             {
                 case "azure-native:containerservice:ManagedCluster": return NewManagedCluster(args, outputs);
+                case "azure-native:containerservice:AgentPool": return NewAgentPool(args, outputs);
+                case "azuread:index/application:Application": return NewApplication(args, outputs);
                 default: return Task.FromResult((args.Id, (object)outputs));
             }
         }
@@ -39,6 +41,20 @@ namespace Stize.Infrastructure.Azure.Tests.ContainerService.Stacks
         public Task<(string? id, object state)> NewManagedCluster(MockResourceArgs args, ImmutableDictionary<string, object>.Builder outputs)
         {
             outputs.Add("name", args.Inputs["resourceName"]);
+
+            return Task.FromResult((args.Id, (object)outputs));
+        }
+
+        public Task<(string? id, object state)> NewAgentPool(MockResourceArgs args, ImmutableDictionary<string, object>.Builder outputs)
+        {
+            outputs.Add("name", args.Inputs["agentPoolName"]);
+
+            return Task.FromResult((args.Id, (object)outputs));
+        }
+
+        public Task<(string? id, object state)> NewApplication(MockResourceArgs args, ImmutableDictionary<string, object>.Builder outputs)
+        {
+            outputs.Add("name", args.Inputs["displayName"]);
 
             return Task.FromResult((args.Id, (object)outputs));
         }

@@ -77,6 +77,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
         }
 
         /// <summary>
+        /// %%% NEEDS FIX %%%
         /// Should each node have a Public IP Address? Defaults to false.
         /// Specify the public prefix IP resource ID.
         /// </summary>
@@ -229,6 +230,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
 
         /// <summary>
         /// Enables the Federal Information Processing Standard (FIPS) for the Operating System. It is enabled by default.
+        /// Requires preview mode.
         /// </summary>
         /// <param name="builder"></param>
         /// <returns></returns>
@@ -257,7 +259,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="gpuProfile">GPUInstanceProfile to be used to specify GPU MIG instance profile for supported GPU VM SKU. 
         /// Valid values are MIG1g, MIG2g, MIG3g, MIG4g and MIG7g.</param>
         /// <returns></returns>
-        public static AgentPoolBuilder GPUInstanceProfile(this AgentPoolBuilder builder, InputUnion<string, GPUInstanceProfile> gpuProfile)
+        public static AgentPoolBuilder GPUProfile(this AgentPoolBuilder builder, InputUnion<string, GPUInstanceProfile> gpuProfile)
         {
             builder.Arguments.GpuInstanceProfile = gpuProfile;
             return builder;
