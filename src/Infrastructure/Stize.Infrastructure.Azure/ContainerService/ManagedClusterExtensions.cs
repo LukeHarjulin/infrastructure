@@ -484,7 +484,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="subnetAddressRange">The subnet CIDR to be used to create an Application Gateway, which in turn will be integrated with the ingress controller of this Kubernetes Cluster. 
         /// See <see href="https://docs.microsoft.com/en-us/azure/application-gateway/tutorial-ingress-controller-add-on-existing">this link</see> for further details.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder EnableIngressWithNewAppGateway(this ManagedClusterBuilder builder, Input<string> appGatewayName, Input<string> subnetAddressRange)
+        public static ManagedClusterBuilder WithNewAppGatewayIngress(this ManagedClusterBuilder builder, Input<string> appGatewayName, Input<string> subnetAddressRange)
         {
             builder.AddonProfiles.Add("ingressApplicationGateway", new ManagedClusterAddonProfileArgs
             {
@@ -508,7 +508,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
         /// <param name="appGatewayId">The ID of an existing Application Gateway, which in turn will be integrated with the ingress controller of this Kubernetes Cluster.
         /// See <see href="https://docs.microsoft.com/en-us/azure/application-gateway/tutorial-ingress-controller-add-on-existing">this link</see> for further details.</param>
         /// <returns></returns>
-        public static ManagedClusterBuilder EnableIngressWithExistingAppGateway(this ManagedClusterBuilder builder, Input<string> appGatewayId)
+        public static ManagedClusterBuilder WithExistingAppGatewayIngress(this ManagedClusterBuilder builder, Input<string> appGatewayId)
         {
             builder.AddonProfiles.Add("ingressApplicationGateway", new ManagedClusterAddonProfileArgs
             {
@@ -564,7 +564,7 @@ namespace Stize.Infrastructure.Azure.ContainerService
         }
 
         /// <summary>
-        /// The HTTP application routing solution makes it easy to access applications that are deployed to your Azure Kubernetes Service (AKS) cluster. 
+        /// The HTTP application routing solution makes it easy to access applications, through HTTP, that are deployed to your Azure Kubernetes Service (AKS) cluster. 
         /// When the solution is enabled, it configures an Ingress controller in your AKS cluster.
         /// As applications are deployed, the solution also creates publicly accessible DNS names for application endpoints.
         /// Also, when enabled, a DNS Zone is created in your subscription.
